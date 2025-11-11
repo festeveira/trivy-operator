@@ -50,6 +50,7 @@ const (
 	keyTrivyJavaDBRepository                    = "trivy.javaDbRepository"
 	keyTrivyDBRepositoryInsecure                = "trivy.dbRepositoryInsecure"
 	keyTrivyTmpDir                              = "trivy.tmpDir"
+	keyTrivyServerEnableRandomTempDir 			= "trivy.enableRandomTempDir"
 
 	keyTrivyUseBuiltinRegoPolicies    = "trivy.useBuiltinRegoPolicies"
 	keyTrivyUseEmbeddedRegoPolicies   = "trivy.useEmbeddedRegoPolicies"

@@ -588,6 +588,7 @@ trivy:
   imageScanCacheDir: "/tmp/trivy/.cache"
   # -- tmpDir the flag to set custom TMPDIR environment variable for trivy.
   tmpDir: ""
+  enableRandomTempDir: false
   # -- filesystemScanCacheDir the flag to set custom path for trivy filesystem scan `cache-dir` parameter.
   # Only applicable in filesystem scan mode.
   filesystemScanCacheDir: "/var/trivyoperator/trivy-db"

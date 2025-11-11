@@ -138,5 +138,8 @@ data:
   {{- with .Values.trivy.tmpDir }}
   trivy.tmpDir: {{ . | quote }}
   {{- end }}
+  {{- with .Values.trivy.enableRandomTempDir }}
+  trivy.enableRandomTempDir: {{ . | quote }}
+  {{- end }}
 {{- end }}
 {{- end }}
