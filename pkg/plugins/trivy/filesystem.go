@@ -224,7 +224,12 @@ func GetPodSpecForStandaloneFSMode(ctx trivyoperator.PluginContext, config Confi
 		args := GetFSScanningArgs(ctx, command, Standalone, "")
 		if len(clusterSboms) > 0 { // trivy sbom ...
 			if sbomreportData, ok := clusterSboms[c.Name]; ok {
-				secretName := fmt.Sprintf("sbom-%s", c.Name)
+				objectHash := kube.ComputeHash(kube.ObjectRef{
+					Kind:      kube.Kind(workload.GetObjectKind().GroupVersionKind().Kind),
+					Namespace: workload.GetNamespace(),
+					Name:      workload.GetName(),
+				})
+				secretName := fmt.Sprintf("scan-vulnerability-report-%s-%s-sbom", objectHash, c.Name)
 				secret, err := CreateSbomDataAsSecret(sbomreportData.Bom, secretName)
 				if err != nil {
 					return corev1.PodSpec{}, nil, err
@@ -454,7 +459,12 @@ func GetPodSpecForClientServerFSMode(ctx trivyoperator.PluginContext, config Con
 		args := GetFSScanningArgs(ctx, command, ClientServer, encodedTrivyServerURL.String())
 		if len(clusterSboms) > 0 { // trivy sbom ...
 			if sbomreportData, ok := clusterSboms[c.Name]; ok {
-				secretName := fmt.Sprintf("sbom-%s", c.Name)
+				objectHash := kube.ComputeHash(kube.ObjectRef{
+					Kind:      kube.Kind(workload.GetObjectKind().GroupVersionKind().Kind),
+					Namespace: workload.GetNamespace(),
+					Name:      workload.GetName(),
+				})
+				secretName := fmt.Sprintf("scan-vulnerability-report-%s-%s-sbom", objectHash, c.Name)
 				secret, err := CreateSbomDataAsSecret(sbomreportData.Bom, secretName)
 				if err != nil {
 					return corev1.PodSpec{}, nil, err
