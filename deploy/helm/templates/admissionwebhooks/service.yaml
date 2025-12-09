@@ -1,0 +1,17 @@
+{{- if .Values.operator.webhookSendDeletedReports }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: trivy-operator-add-finalizer-admission-webhook
+  namespace: {{ include "trivy-operator.namespace" . }}
+  labels: {{- include "trivy-operator.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector: {{- include "trivy-operator.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: trivy-operator-add-finalizer-webhook
+      protocol: TCP
+      port: 8090
+      targetPort: 8090
+  sessionAffinity: ClientIP
+{{- end }}

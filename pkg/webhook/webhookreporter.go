@@ -44,25 +44,26 @@ func (r *WebhookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	reports := []client.Object{
-		&v1alpha1.VulnerabilityReport{},
-		&v1alpha1.ExposedSecretReport{},
-		&v1alpha1.ConfigAuditReport{},
-		&v1alpha1.InfraAssessmentReport{},
-		&v1alpha1.ClusterComplianceReport{},
-		&v1alpha1.RbacAssessmentReport{},
-		&v1alpha1.ClusterRbacAssessmentReport{},
-		&v1alpha1.ClusterConfigAuditReport{},
-		&v1alpha1.ClusterInfraAssessmentReport{},
-		&v1alpha1.SbomReport{},
+	reportTypes := []func() client.Object{
+		func() client.Object { return &v1alpha1.ClusterComplianceReport{} },
+		func() client.Object { return &v1alpha1.ClusterConfigAuditReport{} },
+		func() client.Object { return &v1alpha1.ClusterInfraAssessmentReport{} },
+		func() client.Object { return &v1alpha1.ClusterRbacAssessmentReport{} },
+		func() client.Object { return &v1alpha1.ClusterSbomReport{} },
+		func() client.Object { return &v1alpha1.ClusterVulnerabilityReport{} },
+		func() client.Object { return &v1alpha1.ConfigAuditReport{} },
+		func() client.Object { return &v1alpha1.ExposedSecretReport{} },
+		func() client.Object { return &v1alpha1.InfraAssessmentReport{} },
+		func() client.Object { return &v1alpha1.RbacAssessmentReport{} },
+		func() client.Object { return &v1alpha1.SbomReport{} },
+		func() client.Object { return &v1alpha1.VulnerabilityReport{} },
 	}
 
-	for _, reportType := range reports {
+	for _, newReport := range reportTypes {
 		err = ctrl.NewControllerManagedBy(mgr).
-			For(reportType, builder.WithPredicates(
-				predicate.Not(predicate.IsBeingTerminated),
+			For(newReport(), builder.WithPredicates(
 				installModePredicate)).
-			Complete(r.reconcileReport(reportType))
+			Complete(r.reconcileReport(newReport))
 		if err != nil {
 			return err
 		}
@@ -71,23 +72,27 @@ func (r *WebhookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func (r *WebhookReconciler) reconcileReport(reportType client.Object) reconcile.Func {
+func (r *WebhookReconciler) reconcileReport(newReport func() client.Object) reconcile.Func {
 	return func(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 		log := r.Logger.WithValues("report", request.NamespacedName)
 		verb := Update
-		err := r.Client.Get(ctx, request.NamespacedName, reportType)
+		reportObj := newReport()
+		err := r.Client.Get(ctx, request.NamespacedName, reportObj)
 		if err != nil {
-			if !errors.IsNotFound(err) {
-				return ctrl.Result{}, fmt.Errorf("getting report from cache: %w", err)
-			}
-			if !r.WebhookSendDeletedReports {
-				log.V(1).Info("Ignoring cached report that must have been deleted")
+			if errors.IsNotFound(err) {
 				return ctrl.Result{}, nil
 			}
-			verb = Delete
+			return ctrl.Result{}, fmt.Errorf("getting report from cache: %w", err)
 		}
 
-		if ignoreHistoricalReport(reportType) {
+		if r.WebhookSendDeletedReports {
+			if reportObj.GetDeletionTimestamp() != nil {
+				verb = Delete
+				r.removeFinalizerFromReport(ctx, reportObj)
+			}
+		}
+
+		if ignoreHistoricalReport(reportObj) {
 			log.V(1).Info("Ignoring historical report")
 			return ctrl.Result{}, nil
 		}
@@ -95,12 +100,26 @@ func (r *WebhookReconciler) reconcileReport(reportType client.Object) reconcile.
 		webhookBroadcastCustomHeaders := r.Config.GetWebhookBroadcastCustomHeaders()
 
 		if r.WebhookSendDeletedReports {
-			msg := WebhookMsg{OperatorObject: reportType, Verb: verb}
+			msg := WebhookMsg{OperatorObject: reportObj, Verb: verb}
 
 			return ctrl.Result{}, sendReport(msg, r.WebhookBroadcastURL, *r.WebhookBroadcastTimeout, webhookBroadcastCustomHeaders)
 		}
-		return ctrl.Result{}, sendReport(reportType, r.WebhookBroadcastURL, *r.WebhookBroadcastTimeout, webhookBroadcastCustomHeaders)
+		return ctrl.Result{}, sendReport(reportObj, r.WebhookBroadcastURL, *r.WebhookBroadcastTimeout, webhookBroadcastCustomHeaders)
 	}
+}
+
+func (r *WebhookReconciler) removeFinalizerFromReport(ctx context.Context, reportObj client.Object) error {
+	finalizers := []string{}
+	for _, f := range reportObj.GetFinalizers() {
+		if f != finalizerName {
+			finalizers = append(finalizers, f)
+		}
+	}
+	reportObj.SetFinalizers(finalizers)
+	if err := r.Client.Update(ctx, reportObj); err != nil {
+		return fmt.Errorf("removing finalizer: %w", err)
+	}
+	return nil
 }
 
 func sendReport[T any](reports T, endpoint string, timeout time.Duration, headerValues http.Header) error {

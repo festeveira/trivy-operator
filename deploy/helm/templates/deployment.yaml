@@ -79,6 +79,10 @@ spec:
               containerPort: 8080
             - name: probes
               containerPort: 9090
+          {{- if .Values.operator.webhookSendDeletedReports }}
+            - name: af-awh
+              containerPort: 8090
+          {{- end }}
           readinessProbe:
             httpGet:
               path: /readyz/
@@ -101,15 +105,19 @@ spec:
           {{- with .Values.securityContext }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts: {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- if .Values.alternateReportStorage.enabled }}
-          {{- if not .Values.volumeMounts }}
+          {{- if or .Values.volumeMounts .Values.alternateReportStorage.enabled .Values.operator.webhookSendDeletedReports }}
           volumeMounts:
           {{- end }}
+          {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.alternateReportStorage.enabled }}
             - name: {{ .Values.alternateReportStorage.volumeName }}
               mountPath: {{ .Values.alternateReportStorage.mountPath }}
+          {{- end }}
+          {{- if .Values.operator.webhookSendDeletedReports }}
+            - name: add-finalizer-admission-webhook-tls-secret
+              mountPath: /tmp/k8s-webhook-server/serving-certs
           {{- end }}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets: {{- toYaml . | nindent 8 }}
@@ -125,16 +133,21 @@ spec:
         fsGroup:   {{ .Values.alternateReportStorage.podSecurityContext.fsGroup }}
       {{- end }}
       {{- end }}
-      {{- with .Values.volumes }}
-      volumes: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- if .Values.alternateReportStorage.enabled }}
-      {{- if not .Values.volumes }}
+      {{- if or .Values.volumes .Values.alternateReportStorage.enabled .Values.operator.webhookSendDeletedReports }}
       volumes:
       {{- end }}
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.alternateReportStorage.enabled }}
         - name: {{ .Values.alternateReportStorage.volumeName }}
           persistentVolumeClaim:
             claimName: {{ .Values.alternateReportStorage.volumeName }}
+      {{- end }}
+      {{- if .Values.operator.webhookSendDeletedReports }}
+        - name: add-finalizer-admission-webhook-tls-secret
+          secret:
+            secretName: trivy-operator-add-finalizer-admission-webhook-tls
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}

@@ -35,6 +35,10 @@ var InstallModePredicate = func(config etc.Config) (predicate.Predicate, error) 
 		return nil, err
 	}
 	return predicate.NewPredicateFuncs(func(obj client.Object) bool {
+		if obj.GetNamespace() == "" {
+			return true
+		}
+
 		if mode == etc.SingleNamespace {
 			return targetNamespaces[0] == obj.GetNamespace() &&
 				operatorNamespace != obj.GetNamespace()

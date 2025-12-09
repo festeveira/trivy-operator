@@ -1,0 +1,49 @@
+{{- if .Values.operator.webhookSendDeletedReports }}
+{{- $ca := genCA "trivy-operator-add-finalizer-admission-webhook-ca" 365 -}}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: trivy-operator-add-finalizer-webhook
+  labels: {{- include "trivy-operator.labels" . | nindent 4 }}
+webhooks:
+  - name: trivy-operator-add-finalizer.aquasecurity.github.io
+    clientConfig:
+      service:
+        name: trivy-operator-add-finalizer-admission-webhook
+        namespace: {{ include "trivy-operator.namespace" . }}
+        path: /add-finalizer
+        port: 8090
+      caBundle: {{ $ca.Cert | b64enc | quote }}
+    rules:
+      - apiGroups: ["aquasecurity.github.io"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE"]
+        resources:
+          - clustercompliancereports
+          - clusterconfigauditreports
+          - clusterinfraassessmentreports
+          - clusterrbacassessmentreports
+          - clustersbomreports
+          - clustervulnerabilityreports
+          - configauditreports
+          - exposedsecretreports
+          - infraassessmentreports
+          - rbacassessmentreports
+          - sbomreports
+          - vulnerabilityreports
+        scope: "*"
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: 5
+---
+{{- $cert := genSignedCert "trivy-operator-add-finalizer-admission-webhook" nil (list "trivy-operator-add-finalizer-admission-webhook" "trivy-operator-add-finalizer-admission-webhook.trivy-system.svc" "trivy-operator-add-finalizer-admission-webhook.trivy-system.svc.cluster.local") 365 $ca }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trivy-operator-add-finalizer-admission-webhook-tls
+  namespace: {{ include "trivy-operator.namespace" . }}
+  labels: {{- include "trivy-operator.labels" . | nindent 4 }}
+data:
+  tls.crt: {{ $cert.Cert | b64enc | quote }}
+  tls.key: {{ $cert.Key | b64enc | quote }}
+{{- end }}

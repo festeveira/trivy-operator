@@ -43,6 +43,11 @@ data:
   OPERATOR_WEBHOOK_BROADCAST_TIMEOUT: {{ .Values.operator.webhookBroadcastTimeout | quote }}
   OPERATOR_WEBHOOK_BROADCAST_CUSTOM_HEADERS: {{ .Values.operator.webhookBroadcastCustomHeaders | quote }}
   OPERATOR_SEND_DELETED_REPORTS: {{ .Values.operator.webhookSendDeletedReports | quote }}
+{{- if .Values.operator.webhookSendDeletedReports }}
+  OPERATOR_ADD_FINALIZER_ADMISSION_WEBHOOK_BIND_ADDRESS: ":8090"
+  OPERATOR_ADD_FINALIZER_ADMISSION_WEBHOOK_TLS_CRT_FILE: /tls/add-finalizer-admission-webhook/tls.crt
+  OPERATOR_ADD_FINALIZER_ADMISSION_WEBHOOK_TLS_KEY_FILE: /tls/add-finalizer-admission-webhook/tls.key
+{{- end }}
   OPERATOR_PRIVATE_REGISTRY_SCAN_SECRETS_NAMES: {{ .Values.operator.privateRegistryScanSecretsNames | toJson | quote }}
   OPERATOR_ACCESS_GLOBAL_SECRETS_SERVICE_ACCOUNTS: {{ .Values.operator.accessGlobalSecretsAndServiceAccount | quote }}
   OPERATOR_BUILT_IN_TRIVY_SERVER: {{ .Values.operator.builtInTrivyServer | quote }}

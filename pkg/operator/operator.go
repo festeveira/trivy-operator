@@ -40,6 +40,7 @@ import (
 	vcontroller "github.com/aquasecurity/trivy-operator/pkg/vulnerabilityreport/controller"
 	"github.com/aquasecurity/trivy-operator/pkg/webhook"
 	"github.com/aquasecurity/trivy/pkg/fanal/types"
+	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 var (
@@ -64,7 +65,7 @@ func Start(ctx context.Context, buildInfo trivyoperator.BuildInfo, operatorConfi
 	// Set the default manager options.
 	skipNameValidation := true
 	options := manager.Options{
-		Scheme:                 trivyoperator.NewScheme(),
+		Scheme: trivyoperator.NewScheme(),
 		Metrics:                metricsserver.Options{BindAddress: operatorConfig.MetricsBindAddress},
 		HealthProbeBindAddress: operatorConfig.HealthProbeBindAddress,
 		Client: client.Options{
@@ -102,6 +103,12 @@ func Start(ctx context.Context, buildInfo trivyoperator.BuildInfo, operatorConfi
 		Controller: controllerconfig.Controller{
 			SkipNameValidation: &skipNameValidation,
 		},
+	}
+
+	if (operatorConfig.WebhookSendDeletedReports) {
+		options.WebhookServer = ctrlwebhook.NewServer(ctrlwebhook.Options{
+			Port: 8090,
+		})
 	}
 
 	// Enable profiling if the flag is set.
@@ -289,6 +296,12 @@ func Start(ctx context.Context, buildInfo trivyoperator.BuildInfo, operatorConfi
 	}
 
 	if operatorConfig.WebhookBroadcastURL != "" {
+		if operatorConfig.WebhookSendDeletedReports {
+			if err := (&webhook.AddFinalizerAdmissionWebhook{}).
+				SetupWebhookWithManager(mgr); err != nil {
+				return fmt.Errorf("unable to setup finalizer admission webhook: %w", err)
+			}
+		}
 		if err = (&webhook.WebhookReconciler{
 			Logger: ctrl.Log.WithName("reconciler").WithName("webhookreporter"),
 			Config: operatorConfig,
