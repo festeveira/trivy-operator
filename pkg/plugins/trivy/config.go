@@ -596,3 +596,11 @@ func (c Config) setResourceLimit(configKey string, k8sResourceList *corev1.Resou
 func (c Config) GetDBRepository() (string, error) {
 	return c.GetRequiredData(keyTrivyDBRepository)
 }
+
+func (c Config) GetTmpDir() string {
+	val, ok := c.Data[keyTrivyTmpDir]
+	if !ok {
+		return ""
+	}
+	return val
+}

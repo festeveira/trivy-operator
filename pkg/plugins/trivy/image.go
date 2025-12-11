@@ -1,8 +1,11 @@
 package trivy
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -214,7 +217,10 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 			constructEnvVarSourceFromConfigMap("HTTP_PROXY", trivyConfigName, keyTrivyHTTPProxy),
 			constructEnvVarSourceFromConfigMap("HTTPS_PROXY", trivyConfigName, keyTrivyHTTPSProxy),
 			constructEnvVarSourceFromConfigMap("NO_PROXY", trivyConfigName, keyTrivyNoProxy),
-			constructEnvVarSourceFromConfigMap("TMPDIR", trivyConfigName, keyTrivyTmpDir),
+		}
+
+		if config.GetTmpDir() != "" {
+			env = append(env, getRandomTmpDirEnvVar(config.GetTmpDir()))
 		}
 
 		if config.GetSslCertDir() != "" {
@@ -451,8 +457,12 @@ func GetPodSpecForClientServerMode(ctx trivyoperator.PluginContext, config Confi
 			constructEnvVarSourceFromConfigMap("TRIVY_TOKEN_HEADER", trivyConfigName, keyTrivyServerTokenHeader),
 			constructEnvVarSourceFromSecret("TRIVY_TOKEN", trivyConfigName, keyTrivyServerToken),
 			constructEnvVarSourceFromSecret("TRIVY_CUSTOM_HEADERS", trivyConfigName, keyTrivyServerCustomHeaders),
-			constructEnvVarSourceFromConfigMap("TMPDIR", trivyConfigName, keyTrivyTmpDir),
 		}
+
+		if config.GetTmpDir() != "" {
+			env = append(env, getRandomTmpDirEnvVar(config.GetTmpDir()))
+		}
+
 		if config.GetSslCertDir() != "" {
 			env = append(env, corev1.EnvVar{
 				Name:  "SSL_CERT_DIR",
@@ -840,6 +850,25 @@ func GetMirroredImage(image string, mirrors map[string]string) (string, error) {
 	}
 	// If nothing is mirrored, we can simply use the input image.
 	return image, nil
+}
+
+func getRandomTmpDirEnvVar(tmpDirBase string) corev1.EnvVar {
+	randomBytes := make([]byte, 8)
+	var randomStr string
+
+	if _, err := rand.Read(randomBytes); err != nil {
+		randomStr = ""
+	}
+
+	randomStr = hex.EncodeToString(randomBytes)
+	tempDir := filepath.Join(tmpDirBase, randomStr)
+
+	envVar := corev1.EnvVar{
+		Name: "TMPDIR",
+		Value: tempDir,
+	}
+
+	return envVar
 }
 
 func (p *plugin) newSecretWithAggregateImagePullCredentials(obj client.Object, containerImages kube.ContainerImages, credentials map[string]docker.Auth) *corev1.Secret {
