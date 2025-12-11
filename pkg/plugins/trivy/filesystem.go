@@ -176,7 +176,7 @@ func GetPodSpecForStandaloneFSMode(ctx trivyoperator.PluginContext, config Confi
 		if config.IgnoreFileExists() {
 			env = append(env, corev1.EnvVar{
 				Name:  "TRIVY_IGNOREFILE",
-				Value: ignoreFileMountPath,
+				Value: config.IgnoreFileMountPath(),
 			})
 		}
 		if config.FindIgnorePolicyKey(workload) != "" {
@@ -411,7 +411,7 @@ func GetPodSpecForClientServerFSMode(ctx trivyoperator.PluginContext, config Con
 		if config.IgnoreFileExists() {
 			env = append(env, corev1.EnvVar{
 				Name:  "TRIVY_IGNOREFILE",
-				Value: ignoreFileMountPath,
+				Value: config.IgnoreFileMountPath(),
 			})
 		}
 		if config.FindIgnorePolicyKey(workload) != "" {
