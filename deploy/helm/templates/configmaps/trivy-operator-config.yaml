@@ -45,8 +45,8 @@ data:
   OPERATOR_SEND_DELETED_REPORTS: {{ .Values.operator.webhookSendDeletedReports | quote }}
 {{- if .Values.operator.webhookSendDeletedReports }}
   OPERATOR_ADD_FINALIZER_ADMISSION_WEBHOOK_BIND_ADDRESS: ":8090"
-  OPERATOR_ADD_FINALIZER_ADMISSION_WEBHOOK_TLS_CRT_FILE: /tls/add-finalizer-admission-webhook/tls.crt
-  OPERATOR_ADD_FINALIZER_ADMISSION_WEBHOOK_TLS_KEY_FILE: /tls/add-finalizer-admission-webhook/tls.key
+  OPERATOR_ADD_FINALIZER_ADMISSION_WEBHOOK_TLS_CRT_FILE: /tmp/k8s-webhook-server/serving-certs/tls.crt
+  OPERATOR_ADD_FINALIZER_ADMISSION_WEBHOOK_TLS_KEY_FILE: /tmp/k8s-webhook-server/serving-certs/tls.key
 {{- end }}
   OPERATOR_PRIVATE_REGISTRY_SCAN_SECRETS_NAMES: {{ .Values.operator.privateRegistryScanSecretsNames | toJson | quote }}
   OPERATOR_ACCESS_GLOBAL_SECRETS_SERVICE_ACCOUNTS: {{ .Values.operator.accessGlobalSecretsAndServiceAccount | quote }}
